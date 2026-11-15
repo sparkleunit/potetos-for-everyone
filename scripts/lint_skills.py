@@ -46,15 +46,21 @@ def unsafe_destination(raw):
                for p in (PurePosixPath(raw), PureWindowsPath(raw)))
 
 registry=json.loads((ROOT/'adapters'/'registry.json').read_text(encoding='utf-8'))
-required_adapters={'generic','universal','cursor','claude','codex','gemini','copilot','windsurf','cline','roo','continue','kiro'}
+required_adapters={'generic','universal','cursor','claude','codex','gemini','copilot','windsurf','cline','roo','continue','kiro','littlebird'}
 missing_adapters=required_adapters-set(registry)
 if missing_adapters: errors.append('missing adapters: '+', '.join(sorted(missing_adapters)))
 for name,spec in registry.items():
-    expected_skill_dir = '.kiro/skills' if name == 'kiro' else '.agents/skills'
+    assistant_scoped = spec.get('scope') == 'assistant'
+    expected_skill_dir = {('kiro',): '.kiro/skills', ('littlebird',): '/mnt/skills'}.get((name,), '.agents/skills')
     if spec.get('skill_dir') != expected_skill_dir:
         errors.append(f'adapter {name}: skill_dir must be {expected_skill_dir}')
     for field in ('skill_dir', 'instruction_file'):
-        if unsafe_destination(spec.get(field)):
+        value = spec.get(field)
+        if assistant_scoped and field == 'instruction_file' and value is None:
+            continue
+        if assistant_scoped and field == 'skill_dir':
+            continue
+        if unsafe_destination(value):
             errors.append(f'adapter {name}: unsafe {field}')
 
 lic=(ROOT/'LICENSE').read_text(encoding='utf-8'); notice=(ROOT/'NOTICE.md').read_text(encoding='utf-8'); readme=(ROOT/'README.md').read_text(encoding='utf-8')
