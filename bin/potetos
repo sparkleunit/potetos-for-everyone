@@ -128,13 +128,21 @@ def _hash_path(path: Path) -> str:
     return h.hexdigest()
 
 
+def _is_assistant_scoped(name: str) -> bool:
+    return REGISTRY[name]["skill_dir"].startswith("/")
+
+
 def _selected_agents(name: str) -> list[str]:
     if name == "all":
         # universal/generic only add AGENTS.md, so keep one of them and every
         # specialized host shim. This avoids redundant manifest entries.
-        return ["universal"] + [n for n in REGISTRY if n not in {"generic", "universal"}]
+        # Assistant-scoped adapters (absolute skill_dir on the assistant host)
+        # have no workspace destination and are never planned here.
+        return ["universal"] + [n for n in REGISTRY if n not in {"generic", "universal"} and not _is_assistant_scoped(n)]
     if name not in REGISTRY:
         die(f"unknown agent {name!r}; choose one of: all, {', '.join(sorted(REGISTRY))}")
+    if _is_assistant_scoped(name):
+        die(f"adapter {name} is assistant-scoped (skill_dir {REGISTRY[name]['skill_dir']} lives on the assistant host, not in a workspace target); copy skills/<name> into the assistant's skill mount instead of running the workspace installer")
     return [name]
 
 
@@ -168,7 +176,10 @@ def _reject_collisions(collisions: list[Path]):
 
 
 def _instruction_files(agents: list[str]) -> list[str]:
-    return list(dict.fromkeys(["AGENTS.md"] + [REGISTRY[name]["instruction_file"] for name in agents]))
+    files = [REGISTRY[name]["instruction_file"] for name in agents if REGISTRY[name]["instruction_file"]]
+    if not files:
+        return []
+    return list(dict.fromkeys(["AGENTS.md"] + files))
 
 
 def _install_impl(*, target: Path, agent_selection: str, mode: str, force: bool, manage_gitignore: bool):
@@ -416,9 +427,10 @@ def doctor(args):
         print("install: not installed")
     print("adapters:")
     for name, spec in sorted(REGISTRY.items()):
-        found = (target / spec["instruction_file"]).exists() if target.exists() else False
+        instructions = spec["instruction_file"]
+        found = target.exists() and bool(instructions) and (target / instructions).exists()
         print(
-            f"  {name:10} skills={spec['skill_dir']:16} instructions={spec['instruction_file']}"
+            f"  {name:10} skills={spec['skill_dir']:16} instructions={instructions if instructions else '-'}"
             + (" [present]" if found else "")
         )
 
