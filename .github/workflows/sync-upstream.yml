@@ -1,0 +1,48 @@
+name: Community updates
+
+on:
+  schedule:
+    - cron: '23 15 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: community-updates
+  cancel-in-progress: false
+
+jobs:
+  propose-update:
+    if: github.repository == 'sparkleunit/potetos-for-everyone'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # API calls only: no checkout or execution of upstream code.
+      - name: Open an upstream update pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          upstream_head='TheOnlyFusionCube:main'
+          existing=$(gh api --method GET "repos/$GH_REPO/pulls" \
+            -f state=open -f base=main -f head="$upstream_head" \
+            --jq '.[0].html_url // empty')
+          if [ -n "$existing" ]; then
+            echo "Existing update PR follows upstream automatically: $existing" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          ahead=$(gh api "repos/$GH_REPO/compare/main...$upstream_head" --jq '.ahead_by')
+          if [ "$ahead" -eq 0 ]; then
+            echo 'The fork already contains all upstream commits.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          pr_url=$(gh api --method POST "repos/$GH_REPO/pulls" \
+            -f title='Sync community updates from upstream' \
+            -f base=main -f head="$upstream_head" \
+            -f body='Community updates from TheOnlyFusionCube/potetos-for-everyone. Review the changes and approve CI workflows if GitHub requests it. Merge only after checks pass. Use Create a merge commit to preserve upstream ancestry; do not squash or rebase this sync PR. Fork customizations are preserved by the merge; resolve any conflicts before merging. This PR tracks the live upstream main branch and may receive additional commits. This workflow does not merge or update local installations.' \
+            --jq '.html_url')
+          echo "Opened update PR: $pr_url" >> "$GITHUB_STEP_SUMMARY"
