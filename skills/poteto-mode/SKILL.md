@@ -56,6 +56,7 @@ The internal `opening-a-pr` playbook is normally a final step when the task incl
 1. Read the selected file in `playbooks/` completely.
 2. If the host offers a todo/task tracker, copy the playbook steps into it. Otherwise keep a compact checklist in working notes. Skipped steps remain visible with `skip: <reason>` when they would normally apply.
 3. Load only supporting skills/principles that a concrete step triggers. Avoid loading the entire stack into context.
+   When editing C#, read [references/csharp-formatting.md](references/csharp-formatting.md) and apply it alongside the repository's style rules.
 4. Execute in verifiable units. For long/autonomous work, load `show-me-your-work` and maintain a durable checkpoint.
 5. Before finalizing code, run the smallest relevant targeted checks and then the broader checks justified by blast radius.
 6. Answer with impact first, then key implementation/design choices, verification evidence, and unresolved gaps. Do not forward raw worker summaries.
