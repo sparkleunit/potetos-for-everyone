@@ -33,6 +33,8 @@ class AdapterRegistryLintTests(unittest.TestCase):
                                 "instruction_file": "AGENTS.md"}
                          for name in ("generic", "universal", "cursor", "claude", "codex", "gemini",
                                       "copilot", "windsurf", "cline", "roo", "continue", "kiro")}
+        self.registry["littlebird"] = {"skill_dir": "/mnt/skills", "instruction_file": None,
+                                       "scope": "assistant"}
 
     def lint(self, agent=None, field=None, value=None):
         registry = json.loads(json.dumps(self.registry))

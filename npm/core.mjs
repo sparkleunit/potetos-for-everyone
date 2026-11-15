@@ -58,11 +58,16 @@ function removeMarkedBlock(file, begin, end) {
   else fs.rmSync(file, { force: true });
 }
 
+function isAssistantScoped(reg, name) {
+  return reg[name].skill_dir.startsWith("/");
+}
+
 function selectedAgents(selection, reg) {
   if (selection === "all") {
-    return ["universal", ...Object.keys(reg).filter((name) => !["generic", "universal"].includes(name))];
+    return ["universal", ...Object.keys(reg).filter((name) => !["generic", "universal"].includes(name) && !isAssistantScoped(reg, name))];
   }
   if (!reg[selection]) die(`unknown agent ${JSON.stringify(selection)}; choose one of: all, ${Object.keys(reg).sort().join(", ")}`);
+  if (isAssistantScoped(reg, selection)) die(`adapter ${selection} is assistant-scoped (skill_dir ${reg[selection].skill_dir} lives on the assistant host, not in a workspace target); copy skills/<name> into the assistant's skill mount instead of running the workspace installer`);
   return [selection];
 }
 
@@ -117,7 +122,9 @@ function rejectCollisions(collisions) {
 }
 
 function instructionFiles(agents, reg) {
-  return [...new Set(["AGENTS.md", ...agents.map((name) => reg[name].instruction_file)])];
+  const files = agents.map((name) => reg[name].instruction_file).filter(Boolean);
+  if (!files.length) return [];
+  return [...new Set(["AGENTS.md", ...files])];
 }
 
 function copyDir(src, dst) {
@@ -337,7 +344,9 @@ export function doctor({ target = process.cwd() } = {}) {
     adapters: Object.fromEntries(Object.entries(reg).map(([name, spec]) => [name, {
       skillDir: spec.skill_dir,
       instructionFile: spec.instruction_file,
-      present: fs.existsSync(path.join(path.resolve(target), spec.instruction_file))
+      present: spec.instruction_file
+        ? fs.existsSync(path.join(path.resolve(target), spec.instruction_file))
+        : false
     }]))
   };
 }

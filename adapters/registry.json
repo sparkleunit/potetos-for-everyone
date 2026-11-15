@@ -46,5 +46,10 @@
   "kiro": {
     "instruction_file": "AGENTS.md",
     "skill_dir": ".kiro/skills"
+  },
+  "littlebird": {
+    "instruction_file": null,
+    "skill_dir": "/mnt/skills",
+    "scope": "assistant"
   }
 }
